@@ -21,7 +21,6 @@ app.use(fileUpload({
   debug: true
 }));
 
-
 const db = require('./helpers/db.js');
 
 (async() => {
@@ -304,4 +303,3 @@ server.listen(port, function() {
 });
 
 })();
-
