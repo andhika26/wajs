@@ -4,7 +4,6 @@ const { body, validationResult } = require('express-validator');
 const socketIO = require('socket.io');
 const qrcode = require('qrcode');
 const http = require('http');
-const fs = require('fs');
 const { phoneNumberFormatter } = require('./helpers/formatter');
 const fileUpload = require('express-fileupload');
 const axios = require('axios');
@@ -22,18 +21,17 @@ app.use(fileUpload({
   debug: true
 }));
 
-const SESSION_FILE_PATH = './whatsapp-session.json';
-let sessionCfg;
-if (fs.existsSync(SESSION_FILE_PATH)) {
-  sessionCfg = require(SESSION_FILE_PATH);
-}
 
-app.get('/', (req, res) => {
+const db = require('./helpers/db.js');
+
+(async() => {
+  app.get('/', (req, res) => {
   res.sendFile('index.html', {
     root: __dirname
   });
 });
 
+const savedSession = db.readSession();
 const client = new Client({
   restartOnAuthFail: true,
   puppeteer: {
@@ -49,7 +47,7 @@ const client = new Client({
       '--disable-gpu'
     ],
   },
-  session: sessionCfg
+  session: savedSession
 });
 
 client.on('message', msg => {
@@ -98,12 +96,7 @@ io.on('connection', function(socket) {
     socket.emit('authenticated', 'Whatsapp is authenticated!');
     socket.emit('message', 'Whatsapp is authenticated!');
     console.log('AUTHENTICATED', session);
-    sessionCfg = session;
-    fs.writeFile(SESSION_FILE_PATH, JSON.stringify(session), function(err) {
-      if (err) {
-        console.error(err);
-      }
-    });
+    db.savedSession(session);
   });
 
   client.on('auth_failure', function(session) {
@@ -112,10 +105,7 @@ io.on('connection', function(socket) {
 
   client.on('disconnected', (reason) => {
     socket.emit('message', 'Whatsapp is disconnected!');
-    fs.unlinkSync(SESSION_FILE_PATH, function(err) {
-        if(err) return console.log(err);
-        console.log('Session file deleted!');
-    });
+    db.removeSession();
     client.destroy();
     client.initialize();
   });
@@ -312,3 +302,6 @@ app.post('/clear-message', [
 server.listen(port, function() {
   console.log('App running on *: ' + port);
 });
+
+})();
+
