@@ -21,7 +21,7 @@ const readSession = async () => {
 }
 
 const saveSession = (session) => {
-  client.query('INSERT INTO wa_sessions (session) VALUES($1)'), [session], (err, result) => {
+  client.query('INSERT INTO wa_sessions (session) VALUES($1)', [session], (err, result) => {
   if (err){
     console.error('Failed to save Session', err);
   } else {
